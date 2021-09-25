@@ -17,3 +17,6 @@
 * library(shinyWidgets)
 
 Also I used three difference Dataset that I explained in RMA file. This was a sample of how to load data set,tidy it and visualize the important trends or points.
+## Shiny app
+I used shiny packege for making a shiny app for one of my plots. this is the link of this App:
+* https://vmbe7g-paria-fakhrzad.shinyapps.io/Smart_Supply_chain/
