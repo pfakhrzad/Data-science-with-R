@@ -1,0 +1,257 @@
+---
+title: "Assignment1-Data Visualization and tidy"
+author: "Paria Fakhrzad"
+date: "9/18/2021"
+output: 
+  pdf_document:
+    toc: true
+bibliography: Assignment1.bib
+fontsize: 12pt
+---
+\newpage
+# loading libraries
+in this assignment I use of this dataset  noaa_gsod^[https://gist.githubusercontent.com/krisrs1128/3845514e2d5eef57ec3271ea20fdcdb1/raw/44f9860df64b280e6b4c155f144c67bea1825edd/noaa-gosd.csv]
+for more information about this data set fo through this link^[https://www.kaggle.com/noaa/gsod].
+
+ * These libraries have been used
+```{r eval=FALSE, warning=FALSE , message=FALSE}
+library(dplyr)     # using for adding columns or setting filter
+library(readr)     # reading data
+library(tidyverse) 
+library(tidyr)    # using gather for tidying
+library(ggplot2)  # plots
+library(pheatmap) # plot heatmap
+library(readxl)   # save file as CSV
+library(phyloseq)
+library(lubridate)# converting the string to dates and extract year and month
+library(viridis)  # put color in plots
+library(shiny)    # building shiny app
+library(xtable)   # making table for LATEX
+library(plyr)     # use for calculating frequency
+library(shinyWidgets)
+```
+# Assignment1
+## Part a
+I am using the ggplot2 library for more information you can go through this [link](https://ggplot2.tidyverse.org/)
+
+ * the data has loaded and the geom_hex is used for making a histogram
+```{r eval=FALSE}
+data_weather <- readr:: read_csv("https://gist.githubusercontent.com/krisrs1128/3845514e2d5eef57ec3271ea20fdcdb1/raw/44f9860df64b280e6b4c155f144c67bea1825edd/noaa-gosd.csv")
+plot1a <- ggplot(data = data_weather) +
+    geom_hex(mapping =aes(x=gust, y=visib),binwidth=20)
+figure1a <- ggsave("figure1a.png",plot=plot1a, width=10, height=3)
+  
+```
+
+## Part b
+in this part I use filter function to make a new object with clean data in visible and gust columns.
+```{r eval=FALSE}
+data_weather_2 <- dplyr :: filter(data_weather, visib!=999.9)
+data_weather_2 <- dplyr :: filter(data_weather_2, gust!=999.9)
+```
+
+## Part c
+in this part I create the histogram again with cleaned data to see what would change
+```{r eval=FALSE}
+figure1b <-ggplot(data = data_weather_2) +
+  geom_hex(mapping =aes(x=gust, y=visib),binwidth=1)
+ggsave("figure1b.png",plot=figure1b, width=10, height=3)
+```
+
+\newpage
+# Assignment2
+
+## Part a
+in this part I load the data and create a heatmap from raw data with pheatmap()[@pheatmap]
+```{r eval=FALSE}
+data_gene <- readr::read_csv("https://gist.githubusercontent.com/krisrs1128/b8dc85b659186259715f8efe950ffce6/raw/77669ebdda4d6f8a029c2fdf506f4599277b50f4/hiiragi.csv")
+
+# finding the null data 
+is.na(data_gene) %>% table()
+dim(data_gene)
+
+#try to remove the first column as gene and put it as row names
+data_gene2 <- data_gene[,1]
+df <-dplyr::select(data_gene,-gene)
+data_gene_tied <- dplyr::select(data_gene,-gene)
+df2 <- as.matrix.data.frame(data_gene)
+rownames(df2) <- data_gene2$gene
+df2 <- dplyr::select( data_gene, "1 E3.25" : "101 E4.5 (FGF4-KO)")
+
+
+pheatmap1<- pheatmap(df2,cluster_rows=FALSE,cluster_cols=FALSE)
+ggsave("figure2a.png",plot=pheatmap1,width=10, height=4)
+
+```
+
+
+## Part b
+in this part I use kmeans_k as number of clusters and also put denogram for both rows and columns. I see one category in samples names but I am not sure it works or not.
+
+```{r eval=FALSE}
+rownames(df2) <- data_gene2$gene
+pheatmap3<- pheatmap(df2,cluster_rows=TRUE, cluster_cols=TRUE, kmeans_k = 10,)
+ggsave("figure2b.png",plot=pheatmap3,width=10, height=4)
+pheatmap3
+```
+\newpage
+# Assignment3
+
+## Part a and b
+
+ * reading data
+in this Assignment I used the data in this [Link](https://www.kaggle.com/shivkp/customer-behaviour?select=DataCoSupplyChainDataset.csv). this is a table with 180519 rows and 53 columns. 
+
+```{r eval=FALSE}
+SCM_data <- read_csv("DataCoSupplyChainDataset.csv")
+```
+
+* Tidying the Supply Chain data
+note: In this table, one column has a NULL number. I found this based on below codes:
+```{r eval=FALSE}
+summary_SCM <-dplyr::select(SCM_data,c("Days for shipping (real)","Sales per customer","Sales per customer","Order Item Discount Rate","Type"))
+xtable::xtable(summary_SCM <- data.frame(summary(summary_SCM))) #table of summaryS
+sapply(SCM_data,function(x)all(is.na(x))) #Columns are totally empty
+table(sapply(SCM_data,function(x)all(is.na(x))))#Columns are totally empty
+table(lapply(SCM_data,function(x){length(which(is.na(x)))})) #Columns with NA
+str(SCM_data)
+
+```
+
+* spliting tables
+because we don't want to use all columns so some of them has been selected and the names of columns have changed based on standard valuable names in programming( removing the spaces between words)
+
+```{r eval=FALSE}
+#changing the name of columns
+names(SCM_data)[names(SCM_data) == "Delivery Status"] <- "delivery_status"
+names(SCM_data)[names(SCM_data) == "Shipping Mode"] <- "shipping_mode"
+names(SCM_data)[names(SCM_data) == "Days for shipping (real)"] <- "shipping_days"
+names(SCM_data)[names(SCM_data) == "order date (DateOrders)"] <- "order_date"
+names(SCM_data)[names(SCM_data) == "shipping date (DateOrders)"] <- "shipping_date"
+names(SCM_data)[names(SCM_data) == "Category Name"] <- "category_name"
+names(SCM_data)[names(SCM_data) == "Order Item Quantity"] <- "order_quantity"
+names(SCM_data)[names(SCM_data) == "Order Item Discount"] <- "discount"
+names(SCM_data)[names(SCM_data) == "Order Item Discount Rate"] <- "discount_rate"
+names(SCM_data)[names(SCM_data) == "Order Item Product Price"] <- "price"
+names(SCM_data)[names(SCM_data) == "Order Region"] <- "order_region"
+names(SCM_data)[names(SCM_data) == "Benefit per order"] <- "benefit_order"
+names(SCM_data)[names(SCM_data) == "Order Profit Per Order"] <- "Profit"
+names(SCM_data)[names(SCM_data) == "Department Name"] <- "department"
+
+#changing date
+SCM_data <- mutate(SCM_data, 
+                      order_date = as.Date(order_date, format="%m/%d/%Y"),
+                      shipping_date = as.Date(shipping_date, format="%m/%d/%Y"),
+                      year = year(order_date),
+                      month=month(order_date)
+                      )
+#selecting the columns for ploting
+table_delay <-  dplyr::select(SCM_data,c("delivery_status","shipping_mode","shipping_days","order_date","shipping_date","category_name","Type","department","year","month"))
+
+```
+
+
+## Part c
+ * graph number 1
+```{r eval=FALSE}
+sub_group <-dplyr::filter(table_delay,year==c(2015,2016,2017,2018))
+graph_bar <- ggplot(sub_group)+
+  geom_bar(aes(order_date,fill = factor(sub_group$delivery_status)))
+
+ggsave("figure3a.png",plot=graph_bar, width=10, height=4)
+
+```
+
+
+* graph number2
+```{r eval=FALSE}
+table_price <- dplyr::select(SCM_data,c("Late_delivery_risk","year","shipping_date","shipping_days","discount","discount_rate","price","order_quantity","order_region","shipping_mode",))
+
+graph_point <- ggplot(table_price)+
+    geom_point(
+    aes(x= shipping_date,y= shipping_days, 
+    colour= factor(Late_delivery_risk)))+
+    scale_color_viridis(discrete = TRUE) +
+    facet_wrap(.~table_price$order_region)
+ ggsave("figure3b.png",plot=graph_point, width=10, height=4)
+```
+
+```{r eval=FALSE, include=FALSE}
+graph_his <- ggplot(data = SCM_data) +
+  geom_hex(mapping =aes(x=Profit, y=discount),binwidth=20)
+ggsave("figure4c.png",plot=graph_his, width=10, height=4)
+
+```
+
+* Graph number3
+ comparing shipment class and Delivery status. I split new table that contains two variables and add new column for frequency.
+```{r eval=FALSE}
+matrix_data <- select(table_delay,shipping_mode,delivery_status)
+counts <- ddply(matrix_data, .(matrix_data$shipping_mode, matrix_data$delivery_status), nrow)
+names(counts)[names(counts) == "matrix_data$shipping_mode"] <- "shipping_class"
+names(counts)[names(counts) == "matrix_data$delivery_status"] <- "shipping_status"
+names(counts)[names(counts) == "V1"] <- "frequency"
+
+graph_bar <- ggplot(data=matrix_data, aes(x=shipping_mode,, fill=factor(delivery_status)))+
+                  geom_bar()
+ggsave("figure3c.png",plot=graph_bar, width=10, height=4)
+```
+
+
+## Part d- Shiny App
+In this Part I used the customize dataset in my github repository in this [link](https://raw.githubusercontent.com/pfakhrzad/Data_visualization/main/SCM_shiny.csv)
+
+```{r eval=FALSE, include=FALSE}
+
+write.csv(sub_group,'SCM_shiny.csv')
+data_for_shiny <- read_csv("https://raw.githubusercontent.com/pfakhrzad/Data_visualization/main/SCM_shiny.csv")
+library(shiny)
+library(shinyWidgets)
+
+```
+
+* making the shiny app 
+the link of shiny app is[https://vmbe7g-paria-fakhrzad.shinyapps.io/Smart_Supply_chain/](https://vmbe7g-paria-fakhrzad.shinyapps.io/Smart_Supply_chain/)
+
+```{r eval=FALSE}
+# Define UI part 
+ui <- fluidPage(
+  setBackgroundColor("gray"),
+  
+# Application title
+        titlePanel("Delayed_shipments"),
+
+# A select Input for product category
+        selectInput(inputId ="ID",
+                    label   ="Choose the Product category",
+                    choices =c("Fitness","Apparel","Golf","Footwear","Outdoors",
+                               "Fan Shop","Technology","Book Shop","Discs Shop"
+                                ,"Pet Shop","Health and Beauty"),
+                    selected="Apparel",width=200
+                   ),
+        
+# Show a plot of the Delayed shipment
+        plotOutput("bargraph")
+               )
+
+# Define server logic required to draw a bargragh
+server <- function(input, output)
+{
+
+    output$bargraph <- renderPlot({
+      library(dplyr)
+      SelectedData <- dplyr::filter(data_for_shiny,department==input$"ID")
+      library(ggplot2)
+      title <- "Delayed_Shipment"
+      ggplot(SelectedData)+
+          geom_bar(aes(order_date,colour = factor(delivery_status)))+
+          ggtitle("The number of orders trend with delivery status")
+                                })
+}  
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+```
+
+
+
