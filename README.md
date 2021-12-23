@@ -1,4 +1,6 @@
-Here, there are four assignments of data science course
+Here, there are four assignments of data science course at McMaster university.
+Instructor: Dr. Pratheepa Jeganathan
+
 
 # Assignmnet 1: Data visualization
 In this assignment we uses R packages for visualization.
