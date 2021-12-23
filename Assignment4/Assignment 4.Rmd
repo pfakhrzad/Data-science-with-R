@@ -38,7 +38,7 @@ library(pls)
 ## 1.2- loading dataset
 In this assignment we are using a dataset related to insurance company^[https://www.kaggle.com/racholsan/customer-data].
 There are 10000 samples in this dataset that are customers of this company and their 18 features in year 2020~\cite{data}. There are 10000 customer as sample in this data frame.
-```{r message=FALSE, warning=FALSE}
+```{r}
 cust_df_original <- readr:: read_csv("customer-data.csv")
 cust_df <- cust_df_original
 ```
@@ -47,7 +47,7 @@ cust_df <- cust_df_original
 
  * Outliers and missing values 
  Here we can see that 957 samples have null value in annual_mileage and 982 samples have null value in credit_score.Therefore in we omit these `NA` observations from our dataset.
-```{r warning=FALSE, message=FALSE, eval=FALSE}
+```{r}
 #finding null observation
 table(sapply(cust_df,function(x)all(is.na(x))))#Columns are totally empty
 table(lapply(cust_df,function(x){length(which(is.na(x)))})) #Columns with NA
@@ -104,7 +104,7 @@ summary(best_subset_model)$which[which.max(summary(best_subset_model)$adjr2),]
 ```
 
 ## 2.2- Ridge Regression
-```{r eval=FALSE}
+```{r}
 #fit ridge regression with whole data
 grid <- 10^seq(10,-2,length=100)
 ridge_model <- glmnet(cust_df_x, cust_df_y, alpha = 0, lambda = grid)
@@ -131,7 +131,7 @@ predict(ridge_model2, type = "coefficients", s = bestlam)[1:26, ]
 
 
 ## 2.3-  The Lasso
-```{r eval=FALSE}
+```{r}
 #fit lasso model
 lasso_model <- glmnet(cust_df_x, cust_df_y, alpha = 1, lambda = grid)
 plot(lasso_model )
@@ -153,7 +153,7 @@ predict(lasso_model, type = "coefficients", s = bestlam)[1:26, ]
 
 ## 2.4- PLR
 
-```{r eval=FALSE}
+```{r}
 set.seed(10)
 
 #fit PLS 
@@ -161,11 +161,11 @@ pls_model <- plsr(cust_df_y ~ ., data = train_data, validation = "CV")
 summary(pls_model)
 
 ```
-```{r eval=FALSE}
+```{r}
 validationplot(pls_model, val.type = "MSEP")
 ```
 
-```{r eval=FALSE}
+```{r}
 pls_pred <- predict(pls_model,test_data , ncomp = 3)
 mean((pls_pred - label_test)^2)
 mean(abs((pls_pred - label_test)<0.5))
