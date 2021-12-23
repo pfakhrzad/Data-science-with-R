@@ -29,14 +29,14 @@ library(mclust) # for Gaussian Mixtures
 ## 1.2- loading dataset
 In this assignment we are using a dataset related to insurance company^[https://www.kaggle.com/racholsan/customer-data].
 There are 10000 samples in this dataset that are customers of this company and their 18 features in year 2020~\cite{data}. There are 10000 customer as sample in this data frame.
-```{r eval=FALSE, message=FALSE, warning=FALSE}
+```{r}
 cust_df_original <- readr:: read_csv("customer-data.csv")
 cust_df <- cust_df_original
 ```
 
 ## 1.3- Dataset Exploration and transformation
 ### 1.3.1 - Summary of dataset
-```{r eval=FALSE}
+```{r}
 names(cust_df) #name of columns
 dim(cust_df)   #dimention of dataset 10000 * 18
 str(cust_df)
@@ -48,14 +48,14 @@ summary(cust_df)
  * The data shows that 23percent of customers claimed the accident insurance last year.
  
 ### 1.3.2 - Outliers and missing values 
-```{r warning=FALSE, message=FALSE, eval=FALSE}
+```{r}
 #finding null observation
 table(sapply(cust_df,function(x)all(is.na(x))))#Columns are totally empty
 table(lapply(cust_df,function(x){length(which(is.na(x)))})) #Columns with NA
 
 ```
 Here we can see that 957 samples have null value in annual_mileage and 982 samples have null value in credit_score.Therefore in below we omit these `NA` observations from our dataset.
-```{r warning=FALSE, message=FALSE, eval=FALSE}
+```{r}
 cust_df<- dplyr::filter(cust_df,!is.na(annual_mileage))
 cust_df<- dplyr::filter(cust_df,!is.na(credit_score))
 ```
@@ -76,7 +76,7 @@ For using clustering method we need to kepp all number features or change the ty
  * vehicle ownership  True=1 , false=0
  * outcome True=1, False=0
 
-```{r eval=FALSE}
+```{r}
 # changing the age to numbers
 cust_df$age <- ifelse(cust_df$age=="65+",65,cust_df$age) 
 cust_df$age <- ifelse(cust_df$age=="16-25",20,cust_df$age)
@@ -86,7 +86,7 @@ cust_df$age <- as.numeric(cust_df$age)
 ```
 
 
-```{r eval=FALSE}
+```{r}
 # changing the driving experience to number
 cust_df$driving_experience <- ifelse(cust_df$driving_experience=="0-9y",5,
                                             cust_df$driving_experience)
@@ -100,7 +100,7 @@ cust_df$driving_experience <- as.numeric(cust_df$driving_experience)
 
 ```
 
-```{r eval=FALSE}
+```{r}
 #change gender, children and married to number
 cust_df$gender <- as.numeric(ifelse(cust_df$gender=="female",1,0))
 cust_df$married <- as.numeric(ifelse(cust_df$married=="TRUE",1,0))
@@ -110,7 +110,7 @@ cust_df$vehicle_ownership <- as.numeric(
 
 ```
 
-```{r eval=FALSE}
+```{r}
 #income
 cust_df$income <- ifelse(cust_df$income=="upper class",
                                            1,cust_df$income)
@@ -139,7 +139,7 @@ cust_df$vehicle_year <- as.factor(cust_df$vehicle_year)
 cust_df$vehicle_type<- as.factor(cust_df$vehicle_type)
 ```
 
-```{r eval=FALSE}
+```{r}
 #change the claim outcome to factor
 cust_df <- mutate(cust_df, outcome = 
                         factor(outcome, levels = c("FALSE", "TRUE"), 
@@ -150,20 +150,20 @@ summary(cust_df)
 ## 1.4- Data analysis 
 In this section we are going to use visualization tools and statistical methods to find the relationship between features and find significant notice about this dataset.
 
-```{r eval=FALSE}
+```{r}
 xtabs(~age+outcome,cust_df)
 ```
 
-```{r eval=FALSE}
+```{r}
 xtabs(~income+outcome,cust_df)
 ```
 
-```{r eval=FALSE}
+```{r}
 xtabs(~education+outcome,cust_df)
 ```
 In these tables it can bee seen that customers with average age 20 ( between 15-25) has the most rate of accident claims, Also customers if highschool education have more tend to claim for car insurance compared to other education levels.
 
-```{r , message=FALSE, warning=FALSE,  eval=FALSE}
+```{r}
 #using ggpairs() for founding the correlation of numeric features
 customer_corr_matrix<-dplyr::select(cust_df,c("age","driving_experience",
                                   "annual_mileage","speeding_violations",
@@ -177,7 +177,7 @@ ggsave("figure1.png",figure1, width=10, height = 4)
 ```
 
 In this ggpair plot, the significant point is that Age and driving experience are collinear. It appears that older customers who own the vehicle tended to less claim (outcome in figure legend) than those who did not. Also in figure5 it seems there are relationship between credit score and number of claims in last year.
-```{r  eval=FALSE}
+```{r}
 # speeding_violations and past accidents
 figure2 <-ggscatter(cust_df,x ='speeding_violations',y ='past_accidents', 
           add = "reg.line", conf.int = TRUE, 
@@ -216,7 +216,7 @@ ggsave("figure4.png",figure4,width = 3, height = 2)
 ggsave("figure5.png",figure5,width = 3, height = 2)
 ```
 
-```{r, include=FALSE,  eval=FALSE}
+```{r}
 cor(cust_df$annual_mileage, cust_df$speeding_violations, method = "pearson", use = "complete.obs")
 ```
 
@@ -226,7 +226,7 @@ cor(cust_df$annual_mileage, cust_df$speeding_violations, method = "pearson", use
 In this part we are going to apply differenct clustering algorithm in customer dataset to see if the customers can be assigned to specific clusters.
 here first of all we keep just variables with numeric types and also remove the outcome label.
 
-```{r eval=FALSE}
+```{r}
 #remove categorical features 
 cust_df_num <- dplyr::select(cust_df,-vehicle_year)
 cust_df_num <- dplyr::select(cust_df_num,-vehicle_type)
@@ -239,13 +239,13 @@ str(cust_df_num)
 ```
 now we can see that number of features are 15 here.
 We need to normalize the data by scale() function
-```{r  eval=FALSE}
+```{r}
 #scale data
 cust_df_num_scale <- scale(cust_df_num)
 ```
 
 Also need to calculate distance matrix. here we use Euclidean method.
-```{r  eval=FALSE}
+```{r}
 #distance 
 cust_df_dis<- dist(cust_df_num,method = 'euclidean')
 cust_df_dis_scale<- dist(cust_df_num_scale,method = 'euclidean')
@@ -253,7 +253,7 @@ cust_df_dis_scale<- dist(cust_df_num_scale,method = 'euclidean')
 
 ## 2.2- Kmeans clustering 
 In this part we use K-means clustering algorithm and for having the optimal number of K (clusters) here firstly we used elbow method to calculate Within sum of squares(WSS) and minimum one would be best response.There are two ways for finding the K:
-```{r  eval=FALSE}
+```{r}
 #solution 1 silhouette
 library(factoextra)
 figure17<- factoextra:: fviz_nbclust(cust_df_num_scale, kmeans, method="silhouette")+
@@ -271,7 +271,7 @@ ggsave("figure16.png", figure18, width=10)
 
 ```
 * fitting K-means with two cluster
-```{r eval=FALSE}
+```{r}
 set.seed(720)
 KM_model <-kmeans(cust_df_num_scale, centers=2, nstart=20)
 KM_model
@@ -279,12 +279,12 @@ KM_model$tot.withinss
 ```
 with two clusters we can see that our customers are split to two clusters `4497` and `3652`. Lets see these customers in a plot,
 
-```{r eval=FALSE}
+```{r}
 KM_customer <- mutate(cust_df_num,kmeans=KM_model$cluster, outcome=cust_df$outcome)
 xtabs(~kmeans+outcome,KM_customer )
 ```
 We can see that probability in claim in customers cluster 1 is \%12 and in cluster 2 is 55%.
-```{r  eval=FALSE}
+```{r}
 # plotting K-means result
 plot(x=KM_customer$credit_score, y=KM_customer$annual_mileage,
                 col = KM_customer$kmeans,
@@ -301,7 +301,7 @@ ggsave("figure6.png", figure6,width = 4, heigh=2)
 
 ## 2.3- Hierarchical Clustering
 In this part we are using hierarchical clustering for our dataset, 
-```{r eval=FALSE}
+```{r}
 hcl_com_model <-hclust(cust_df_dis, method = "complete")
 hcl_ave_model <-hclust(cust_df_dis, method = "average")
 hcl_sin_model <-hclust(cust_df_dis, method = "single")
@@ -309,7 +309,7 @@ hcl_cen_model <-hclust(cust_df_dis, method = "centroid")
 ```
 
 We used 4 linkage to fit the cluster model and here we plot these 4 clusters:
-```{r eval=FALSE}
+```{r}
 figure7 <- plot(hcl_com_model, main = "Complete Linkage",
 xlab = "", sub = "", cex = .5, hang=-10)
 rect.hclust(hcl_com_model , k = 2, border = 2:6)
@@ -337,25 +337,25 @@ ggsave("figure10.png", figure10,width = 4, heigh=2)
 
 ```
 we can see that it is hard to recognize data point in the last clusters so we use cutree() function to cut the dendogram based on number of clusters.
-```{r eval=FALSE}
+```{r}
 cut_hclc_model<-cutree(hcl_com_model,k=2)
 cut_hcla_model<-cutree(hcl_ave_model,k=2)
 cut_hcls_model<-cutree(hcl_sin_model,k=2)
 cut_hclcen_model<-cutree(hcl_cen_model,k=2)
 ```
 
-```{r eval=FALSE}
+```{r}
 hcl_customers<- mutate(cust_df_num,Hcluster=cut_hclc_model, outcome=cust_df$outcome, kmeans=KM_model$cluster)
 xtabs(~Hcluster+outcome,hcl_customers)
 xtabs(~Hcluster+kmeans,hcl_customers)
 ```
-```{r  eval=FALSE}
+```{r}
 figure11 <- ggplot(hcl_customers, aes(x=credit_score, y =annual_mileage, color = factor(Hcluster))) + geom_point()+ggtitle("hierarchical Clustering Results with K =2")
 figure11
 ggsave("figure11.png", figure11,width = 4, heigh=2)
 ```
 * using scaled features
-```{r eval=FALSE}
+```{r}
 plot(
   hclust(cust_df_dis_scale, method = "complete"),
 main = "Hierarchical Clustering with Scaled Features")
@@ -364,13 +364,13 @@ cut_customer_scale <- cutree(hclust(cust_df_dis_scale, method = "complete"),k=2)
 
 ## 2.4- Gaussian Mixture Model clustering
 model based clustering with 2 clusters:
-```{r  eval=FALSE}
+```{r}
 Mclust_model <- Mclust(cust_df_num_scale, 2)
 summary(Mclust_model)
 names(Mclust_model)
 map(Mclust_model$z)
 ```
-```{r  eval=FALSE}
+```{r}
 Mclust_customers <- mutate(cust_df_num,Mcluster=Mclust_model$classification, outcome=cust_df$outcome)
 xtabs(~Mcluster+outcome,Mclust_customers)
 figure12<- ggplot(Mclust_customers, aes(x=credit_score, y =annual_mileage,
@@ -382,7 +382,7 @@ ggsave("figure12.png", figure12,width = 4, heigh=2)
 
 ```
 
-```{r  eval=FALSE}
+```{r}
 #plot(Mclust_model,  what = c("BIC"))
 plot(Mclust_model,  what = c("classification"), main = "Mclust clustering with five components")
 
@@ -391,7 +391,7 @@ plot(Mclust_model,  what = c("classification"), main = "Mclust clustering with f
 
 ## 2.5- PCA
 ### 2.5.1 Perform PCA
-```{r eval=FALSE}
+```{r}
 #perform PCA
 PCA_model <-prcomp(cust_df_num,center= TRUE, scale = TRUE)
 
@@ -405,13 +405,13 @@ xtable::xtable(summary(PCA_model))
 ```
 * since there are 15 features, we have 15 PCAs as well 
 
-```{r  eval=FALSE}
+```{r}
 #loading scores 
 PCA_model$rotation
 dim(PCA_model$x)
 ```
 * The first PCA accounts for `30\%` variation of data and second accounts for `11\%'.
-```{r eval=FALSE}
+```{r}
 prop_var <- round(((PCA_model$sdev^2)/sum(PCA_model$sdev^2))*100,0)
 prop_var
 figure14 <- (plot(prop_var, main="PCA Percent Variance",
@@ -423,12 +423,12 @@ ggsave("figure15.png", figure15 ,width = 4, heigh=2)
 In rotation matrix we can see that score of 15 features for PCA1 is not equal and some of features such as `gender`, `race` and `postal_code` have not explained by PC1, on the other hand PC4 for these features has the most score, so lets draw some plots:
 
 
-```{r eval=FALSE}
+```{r}
 figure20<- biplot(PCA_model, scale=0)
 ```
 
 * Using the two PCA1 and PCA2 to draw a plot
-```{r  eval=FALSE}
+```{r}
 Cols <- function(vec) {
 cols <- rainbow(length(unique(vec)))
 return(cols[as.numeric(as.factor(vec))]) 
@@ -437,26 +437,26 @@ plot(PCA_model$x[,1],PCA_model$x[,2],col = Cols(colnames(cust_df_num)))
 ```
 
 * Using the two PCA1 and PCA4 to draw a plot
-```{r  eval=FALSE}
+```{r}
 plot(PCA_model$x[,1],PCA_model$x[,4],col = Cols(colnames(cust_df_num)))
 ```
 
 
 * eigenvalues of dataset and diagonal of the covariance matrix of PCA result 
-```{r  eval=FALSE}
+```{r}
 eigen(cor(cust_df_num))$value
 diag(var(PCA_model$x[,]))
 ```
 
 
-```{r eval=FALSE}
+```{r}
 PCA_model$rotation=-PCA_model$rotation
 PCA_model$x=-PCA_model$x
 biplot(PCA_model, scale=0)
 ```
 ### 2.5.2 Clustering with PCA
 
-```{r  eval=FALSE}
+```{r}
 KM_model_PCA <- kmeans(PCA_model$x[, 1:5],centers=2, nstart=5)
 hcl_model_PCA <- hclust(dist(PCA_model$x[, 1:5]))
 cut_hcl_PCA <-cutree(hcl_model_PCA, k=2)
@@ -467,7 +467,7 @@ xtabs(~Hcluster_PCA+outcome,hcl_customers)
 xtabs(~Hcluster_PCA+Kmeans_PCA,hcl_customers)
 
 ```
-```{r  eval=FALSE}
+```{r}
 figure21 <- ggplot(hcl_customers,aes(x=credit_score,y=annual_mileage,
                         color = factor(Kmeans_PCA))) +
   geom_point()+
@@ -485,7 +485,7 @@ ggsave("figure22.png", figure22 ,width = 4, heigh=2)
 
 ## 2.6- DBSCAN clustering 
 
-```{r  eval=FALSE}
+```{r}
 library(fpc) #computing density-based clustering
 set.seed(133)
 DBSCAN_model <- fpc::dbscan(cust_df_num, eps = .9, MinPts = 5)
