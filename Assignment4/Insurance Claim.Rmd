@@ -1,0 +1,843 @@
+---
+title: "Insurance Claim"
+author: "Paria Fakhrzad"
+date: "October-2021"
+output: 
+    pdf_document:
+      toc: true
+bibliography: Assignment4.bib
+fontsize: 11pt
+---
+
+# Part1- Data
+## 1.1- loading libraries
+```{r eval=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(Hmisc)
+library(magrittr)
+library(readr)
+library(ggplot2)
+library(ISLR2)
+library(class)
+library(ggpubr)
+library(GGally)
+library(PreProcess)
+library(caTools)
+library(caret)
+library(tree) # CART 
+library(MASS)
+library(mclust) # for Gaussian Mixtures
+library(car)
+library(boot)
+library(e1071)
+library(leaps)
+library(glmnet)
+library(pls)
+```
+
+## 1.2- loading dataset
+The source of data^[https://www.kaggle.com/racholsan/customer-data].
+we will use a Car insurance claim dataset in 2021 that has collected based on customers of that insurance company ~\cite{data}. there are 10000 customer as sample in this data frame. Also 17 features have been collected based on the customer's attributes. There is one column that shows this customer had accident claim last year or not. this is logical column. The data shows that 23percent of customers claimed the accident insurance last year.
+
+```{r eval=FALSE, message=FALSE, warning=FALSE}
+cust_df_original <- readr:: read_csv("customer-data.csv")
+cust_df <- cust_df_original
+```
+
+## 1.3- Dataset Exploration and transformation
+### 1.3.1 - Summary of dataset
+```{r eval=FALSE}
+names(cust_df) #name of columns
+dim(cust_df)   #dimension of dataset 10000 * 18
+str(cust_df)
+summary(cust_df)
+```
+
+ * `cust_df` is a data frame with 10000 observations on 18 variables.
+ * There are eighteen variables in the data set that are logical, number and  character
+ * The data shows that 23percent of customers claimed the accident insurance last year.
+ 
+### 1.3.2 - Outliers and missing values 
+ 
+```{r warning=FALSE, message=FALSE, eval=FALSE}
+#finding null observation
+table(sapply(cust_df,function(x)all(is.na(x))))#Columns are totally empty
+table(lapply(cust_df,function(x){length(which(is.na(x)))})) #Columns with NA
+```
+Here we can see that 957 samples have null value in annual_mileage and 982 samples have null value in credit_score.Therefore in below we omit these `NA` observations from our dataset.
+```{r warning=FALSE, message=FALSE, eval=FALSE}
+cust_df<- dplyr::filter(cust_df,!is.na(annual_mileage))
+cust_df<- dplyr::filter(cust_df,!is.na(credit_score))
+```
+After observing the summary table in these dataset we find there is no outlier in this dataset.
+
+### 1.3.3 - Data Tyding 
+* The age and experience were interval that both have converted to Number(by mean of interval). 
+* Other char columns, now are number with this logic:
+ * Gender female=1 , male=0 
+ * married True=1 , false=0 
+ * children True=1 , false=0
+ * race majority=1, minority=0
+ * education  none=1, high school=2, university=3
+ * income Upper class=1 , middle class=2, working class=3, poverty=4
+ * vehicle ownership  True=1 , false=0
+ * outcome True=1, False=0
+
+```{r}
+# changing the age to numbers
+cust_df$age <- ifelse(cust_df$age=="65+",65,cust_df$age) 
+cust_df$age <- ifelse(cust_df$age=="16-25",20,cust_df$age)
+cust_df$age <- ifelse(cust_df$age=="26-39",33,cust_df$age)
+cust_df$age <- ifelse(cust_df$age=="40-64",52,cust_df$age) 
+cust_df$age <- as.numeric(cust_df$age)
+```
+
+```{r}
+# changing the driving experience to number
+cust_df$driving_experience <- ifelse(cust_df$driving_experience=="0-9y",5,
+                                            cust_df$driving_experience)
+cust_df$driving_experience <- ifelse(cust_df$driving_experience=="10-19y",15,
+                                            cust_df$driving_experience)
+cust_df$driving_experience <- ifelse(cust_df$driving_experience=="20-29y",25,
+                                            cust_df$driving_experience)
+cust_df$driving_experience <- ifelse(cust_df$driving_experience=="30y+",35,
+                                            cust_df$driving_experience)
+cust_df$driving_experience <- as.numeric(cust_df$driving_experience)
+
+```
+
+```{r}
+#change gender,children and married to number
+cust_df$gender <- as.numeric(ifelse(cust_df$gender=="female",0,1))
+cust_df$married <- as.numeric(ifelse(cust_df$married=="TRUE",1,0))
+cust_df$children <- as.numeric(ifelse(cust_df$children=="TRUE",1,0))
+cust_df$vehicle_ownership <- as.numeric(
+  ifelse(cust_df$vehicle_ownership=="TRUE",1,0))
+
+```
+
+```{r}
+#Income
+cust_df <-mutate(cust_df, income_old=income)
+cust_df$income <- ifelse(cust_df$income=="upper class",
+                                           4,cust_df$income)
+cust_df$income <- ifelse(cust_df$income=="middle class",
+                                           3,cust_df$income)
+cust_df$income <- ifelse(cust_df$income=="working class",
+                                           2,cust_df$income)
+
+cust_df$income <- ifelse(cust_df$income=="poverty",
+                                           1,cust_df$income)
+cust_df$income <-as.numeric(cust_df$income)
+
+#Education
+cust_df <-mutate(cust_df, education_old=education)
+cust_df$education <- ifelse(cust_df$education=="none",
+                                           1,cust_df$education)
+cust_df$education <- ifelse(cust_df$education=="high school",
+                                           2,cust_df$education)
+cust_df$education <- ifelse(cust_df$education=="university",
+                                           3,cust_df$education)
+cust_df$education <-as.numeric(cust_df$education)
+
+#race
+cust_df$race <- ifelse(cust_df$race=="minority",0,1)
+
+
+#vehicle year
+cust_df$vehicle_year <- ifelse(cust_df$vehicle_year=="before 2015",0,1)
+
+#vehicle type
+cust_df$vehicle_type<- ifelse(cust_df$vehicle_type=="sedan",0,1)
+```
+
+```{r}
+#change the label to factor
+cust_df <- mutate(cust_df, outcome = 
+                        factor(outcome, levels = c("FALSE", "TRUE"), 
+                        labels = c(0, 1)))
+```
+
+
+# Part2- Feature analysis
+
+```{r , message=FALSE, warning=FALSE,  eval=FALSE}
+#shows the feature names and dimension
+names(cust_df)
+dim(cust_df)
+str(cust_df)
+```
+
+## 2.1-  Correlation
+
+We also have used cor() function to calculated the correlation between features.
+```{r}
+cust_df<-mutate(cust_df,outcome_number=as.numeric(outcome))
+cust_corr_matrix<-dplyr::select(cust_df,c("age","driving_experience",
+                        "annual_mileage","speeding_violations",
+                        "past_accidents","credit_score","outcome",
+                        "outcome_number"))
+
+cor(cust_corr_matrix[,-7], method = "pearson", use = "complete.obs")
+```
+
+Based on correlation matrix we can see that the correlation between driving_experience and age is 0.7 so one of them is redundant. Also driving_experience has correlated with speeding_violence and  past_accident as well.
+
+we can count the response based on each feature to make sure that all have both Claim and not Claim classes.
+
+```{r eval=FALSE}
+xtabs(~age+outcome,cust_df)
+```
+
+```{r eval=FALSE}
+xtabs(~income+outcome,cust_df)
+```
+
+```{r eval=FALSE}
+xtabs(~education+outcome,cust_df)
+```
+
+```{r eval=FALSE}
+xtabs(~gender+outcome,cust_df)
+```
+
+```{r eval=FALSE}
+xtabs(~race+outcome,cust_df)
+```
+
+```{r eval=FALSE}
+xtabs(~married+outcome,cust_df)
+```
+
+```{r eval=FALSE}
+xtabs(~vehicle_ownership+outcome,cust_df)
+xtabs(~driving_experience+outcome,cust_df)
+xtabs(~vehicle_type+outcome,cust_df)
+xtabs(~vehicle_year+outcome,cust_df)
+```
+
+In these tables can see that customers with average age 20 ( between 15-25) has the most rate of accident claims, Also customers if highschool education have more tend to claim for car insurance compared to other education levels.
+
+## 2.2- Visualization
+we use ggpairs() \cite{@Emersonetc2012} to see correlation between numeric features in figure1. the significant point is that Age and driving experience are collinear.  In figure4 It appears that older  customers who own the vehicle tended to not claim the insurance for accident(outcome in figure legend) than those who did not. Also in figure5 it seems there are relationship between credit score and number of claims in last year.
+```{r eval=FALSE}
+
+figure1 <- ggpairs(cust_corr_matrix)
+figure2 <- ggpairs(cust_corr_matrix, columns = 1:7, 
+                  ggplot2::aes(colour=outcome))
+figure1
+figure2
+```
+In this ggpair plot, the significant point is that Age and driving experience are collinear. It appears that older customers who own the vehicle tended to less claim (outcome in figure legend) than those who did not. Also in figure5 it seems there are relationship between credit score and number of claims in last year.
+
+
+* using box-plot and scatter-plot for figuring out the relationships between some categorical variables with "response" that here is outcome( 1:TRUE, 0:FALSE)
+```{r  eval=FALSE}
+# speeding_violations and past accidents
+figure3 <-ggscatter(cust_df,x ='speeding_violations',y ='past_accidents', 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson")+
+          scale_color_manual(values = c("green", "red"))
+
+# income and age
+figure4 <- ggplot(cust_df) +
+  geom_boxplot(aes(x = income, y = age, fill = outcome)) +
+  theme(legend.position = "none") +
+  theme_bw() +
+  scale_fill_manual(values = c("blue2", "orange"))
+
+# vehicle ownership and age
+figure5 <- ggplot(cust_df) +
+  geom_boxplot(aes(x = vehicle_ownership, y = age, fill = outcome)) +
+  theme(legend.position = "none") +
+  theme_bw() +
+  scale_fill_manual(values = c("blue2", "orange"))
+
+# credit score and outcome
+figure6 <- ggplot(cust_df) +
+  geom_boxplot(aes(x = outcome, y = credit_score)) +
+  theme(legend.position = "none") +
+  theme_bw()
+```
+
+
+# Part3- Classification
+## 3.1- Train/Test split
+*We will use KNN to predict the label of outcome that shows if customer had insurance claim or not. for this mean we need two split our data as train and test.
+
+* train_data: split randomly by sample (75%)
+* test_data: split randomly by sample (25%)
+```{r , eval=FALSE, warning=FALSE, message=FALSE}
+
+#defining sample size and randomly split data solution 1
+training_size = floor(0.75*nrow(cust_df))
+train_data_Solution1 <- sample(seq_len(nrow(cust_df)),size = training_size)
+test_data_Solution1 <- cust_df[-train_data_Solution1,]
+train_data_Solution1 <- cust_df[train_data_Solution1,]
+
+
+#defining sample size and randomly split data solution 2
+ ts_split_Solution2 <- createDataPartition(cust_df$outcome, p = 0.75, list = FALSE)
+ train_data_Solution2<- cust_df[ts_split_Solution2,]
+ test_data_Solution2<- cust_df[-ts_split_Solution2,]
+
+ 
+#definign traing and test data solution 3
+train_data <- cust_df %>% 
+  mutate(ind=1:nrow(cust_df)) %>% 
+  group_by(outcome) %>% 
+  mutate(n=n()) %>%
+  sample_frac(size=.75 , weight=n)%>% 
+  ungroup()
+train_ind<- train_data$ind
+test_data <- cust_df[-train_ind,]
+
+
+#defining the column label for train and test
+label_train_claim <- dplyr::pull(train_data, outcome)
+label_test_claim <- dplyr::pull(test_data, outcome)
+predictor_train <-dplyr::select(train_data,age,gender,race,credit_score,
+                            driving_experience,annual_mileage,
+                            past_accidents,vehicle_ownership,
+                            vehicle_year,married,children,vehicle_type,
+                            DUIs,speeding_violations)
+predictor_test <- dplyr::select(test_data,age,gender,race,credit_score,
+                            driving_experience,annual_mileage,
+                            past_accidents,vehicle_ownership,
+                            vehicle_year,married,children,vehicle_type,
+                            DUIs,speeding_violations)
+
+
+#checking if all solution has the same split rate for response label or not
+xtabs(~cust_df$outcome)/sum(xtabs(~cust_df$outcome))
+xtabs(~train_data_Solution1$outcome)/sum(xtabs(~train_data_Solution1$outcome))
+xtabs(~train_data_Solution2$outcome)/sum(xtabs(~train_data_Solution2$outcome))
+xtabs(~train_data$outcome)/sum(xtabs(~train_data$outcome))
+
+```
+It shows the solution 2 and 3 works better for spliting the observations as Train and test.
+
+## 3.2- KNN
+ We will fit the model with training data then we predict the response with test data.
+For this classification model we need K, We test our accuracy for K range from 1 till 101.
+ * Repeat the K in KNN model to choose the best K
+```{r  eval=FALSE}
+accuracy_table <- data.frame(matrix(ncol = 2, nrow= 0))
+col_name <- c('accuracy', 'k')
+colnames(accuracy_table) <- col_name
+for(i in seq(from = 1, to = 101, by = 2)){
+  knn_model1 <- knn(predictor_train, predictor_test, train_data$outcome,k = i)
+  accuracy <- mean(knn_model1 == label_test_claim)
+  accuracy_table[i,'accuracy'] <- accuracy
+  accuracy_table[i, 'k'] <- i
+}
+accuracy_table <- accuracy_table[order(accuracy_table$accuracy, decreasing = TRUE),]
+head(accuracy_table,20)
+head(accuracy_table,20)
+```
+
+The table shows with `K=3` we have the most accuracy.
+
+```{r eval=FALSE}
+#fit
+knn_model <- knn(predictor_train, predictor_test, train_data$outcome,k = 3)
+
+#predict
+KNN.predicted.data <-data.frame(knn_model, label_test_claim)
+
+#Interpret the output
+summary(knn_model)
+```
+
+## 3.2- Logistic regression 
+We fit model logistic regression based on the train and test data and run it 10 times. Also we consider that labels with fitted probability more than 50\% are correct and we plot the accuracy probability with samples as figure6. It clearly shows that the logistic regression model works well based on this dataset. Also based on figure8 it shows there is not much outlier.
+first we fit the model with all features to cpmpare the `p-value'.
+
+```{r}
+LR_model<- glm(outcome~ .-outcome -outcome_number-id -education -income,
+                data =  cust_df,
+                family ="binomial",
+                subset = train_ind)
+summary(LR_model)
+```
+In summary of GLM we can see that p-value for education,income, DUIs,vehicle_types, credit_score, race and age is more than 0.05 so we will remove all of them for Logistic regression classification model
+```{r  eval=FALSE}
+#fit
+LR_model<- glm(outcome~.-age-education-income-DUIs-vehicle_type-
+                 credit_score-race-outcome -outcome_number-id-
+                 education_old -income_old,
+                data =  cust_df,
+                family ="binomial",
+                subset = train_ind)
+
+#predict test data 
+LR_predict <-predict(LR_model, newdata = test_data, type = "response")
+
+LR.predicted.data <-data.frame(probability=LR_predict, outcome=label_test_claim)
+LR.predicted.data <-LR.predicted.data[order(LR.predicted.data$probability, decreasing = FALSE),]
+LR.predicted.data$rank <- 1:nrow(LR.predicted.data)
+cutoff <- 0.5
+LR.predicted.data <- dplyr::mutate(LR.predicted.data, predicted_outcome = ifelse(LR.predicted.data$probability > cutoff,1,0)) 
+
+#Interpret the output
+summary(LR_model)
+summary(LR_model)$r.sq
+vif(LR_model)
+```
+In Vif() output non of features doesn't have value more than 10 so we don't have multicollinearity.
+
+* here we plot the probability per response for Logistic regression model
+```{r  eval=FALSE}
+# Probability per response 
+figure7 <- ggplot(LR.predicted.data, aes(x= rank, y=probability, col=outcome))+
+           geom_point()+scale_fill_manual(values = c("red", "green"))
+figure7
+```
+
+## 3.3- Decision tree 
+```{r}
+Tree_model <- tree(outcome~age+gender+education_old+married+income_old+
+                  driving_experience+annual_mileage+vehicle_year+
+                  credit_score+vehicle_type+speeding_violations+
+                  past_accidents+children+DUIs,
+                  data=train_data)
+Tree_predict <- predict(Tree_model, test_data, type = "class")
+
+#Pruning
+Tree_cv <- cv.tree(Tree_model,FUN = prune.misclass)
+Tree_cv
+plot(Tree_cv$size, Tree_cv$dev, type = "b") 
+plot(Tree_cv$k, Tree_cv$dev, type = "b")
+
+prune.Tree <- prune.misclass(Tree_model, best = 3)  
+
+plot(prune.Tree)
+text(prune.Tree, pretty = 0)
+Tree_predict <- predict(prune.Tree, test_data, type = "class")
+
+#Intepret the outptut
+summary(Tree_model)
+plot(Tree_model)
+text(Tree_model, pretty = 0)
+```
+we can see when we use tree, driving_experience and vehicle_year are features which based on them we can predict the outcome.
+
+## 3.4- Validation set
+Here we will repeat KNN and logistic regression models for 10 times.We use for() function for iteration.
+```{r  eval=FALSE}
+KNN_running_table <- data.frame(matrix(ncol = 2, nrow= 0))
+LR_running_table <- data.frame(matrix(ncol = 2, nrow= 0))
+colnames(KNN_running_table) <- c('Accuracy', 'Run')
+colnames(LR_running_table) <- c('Accuracy', 'Run')
+for(i in seq(from = 1, to = 10, by = 1)){
+  
+  #Splitting data
+  train_data <- cust_df %>% 
+  mutate(ind=1:nrow(cust_df)) %>% 
+  group_by(outcome) %>% 
+  mutate(n=n()) %>%
+  sample_frac(size=.75 , weight=n)%>% 
+  ungroup()
+  train_ind2<- train_data$ind
+  test_data <- cust_df[-train_ind2,]
+  
+  predictor_train <-dplyr::select(train_data,age,driving_experience,
+                            annual_mileage,past_accidents,
+                            speeding_violations)
+  predictor_test <- dplyr::select(test_data, age, driving_experience,
+                            annual_mileage,past_accidents,
+                            speeding_violations)
+  label_train_claim <- dplyr::pull(train_data, outcome)
+  label_test_claim <- dplyr::pull(test_data, outcome)
+  
+  #knn model
+  knn_model2<- knn(predictor_train, predictor_test, train_data$outcome,k = 43)
+  
+  #Logistic regression model
+  LR_model <- glm(outcome ~age+education+income+postal_code+driving_experience+
+                annual_mileage+vehicle_year+vehicle_type+
+                speeding_violations+past_accidents,
+                data=cust_df,
+                family = binomial("logit"),
+                subset =train_ind)
+  LR_predict <-predict(LR_model, newdata = test_data, type = "response")
+  LR_predicted_table <-ifelse(LR_predict >= 0.5,1,0)
+  
+  #filling the accuracy table
+  KNN_accuracy <- mean(knn_model2 == label_test_claim)
+  KNN_running_table[i,'Accuracy'] <- KNN_accuracy
+  KNN_running_table[i, 'Run'] <- i
+  LR_accuracy <- mean(LR_predicted_table == label_test_claim)
+  LR_running_table[i,'Accuracy'] <- LR_accuracy
+  LR_running_table[i, 'Run'] <- i
+}
+#making table from output and calculating the average
+KNN_running_table
+mean(KNN_running_table$Accuracy)
+LR_running_table
+mean(LR_running_table$Accuracy)
+
+```
+The mean accuracy for KNN is 77% and forlogistic regression is 83% and here we can see that logistic regression workd better.
+
+## 3.6- K-Fold CV
+* K-fold CV for Logistic regression
+```{r}
+LR_cv<- glm(outcome ~.-age-education-income-DUIs-vehicle_type-
+            credit_score-race-outcome -outcome_number-id-
+            education_old -income_old,
+            data = cust_df,family = "binomial")
+cv.glm(cust_df, LR_cv, K=29)$delta[1]
+```
+We can see that estimated test error for using all dataset in fitting logistic regression will be 0.11 that is less than splitting the data to train and test.
+
+* K-fold CV for KNN
+```{r}
+
+x <- dplyr::select(cust_df,age,gender,race,credit_score,
+                            driving_experience,annual_mileage,
+                            past_accidents,vehicle_ownership,
+                            vehicle_year,married,children,vehicle_type,
+                            DUIs,speeding_violations)
+y <- dplyr::pull(cust_df,outcome)
+knn_cv <- tune.knn(x,y, k = 1:30, tunecontrol = tune.control(sampling = "cross",cross=5))
+summary(knn_cv)
+plot(knn_cv)
+```
+the result is same as KNN part and in K=3 there is a drop that would be the optimal `k` in this case.
+
+# Part4- Clustering
+## 4.1- Data Preprocessing
+In this part we are going to apply different clustering algorithm in customer dataset to see if the customers can be assigned to specific clusters.
+here first of all we keep just variables with numeric types and also remove the outcome label.
+
+```{r eval=FALSE}
+#remove categorical features 
+cust_df_num <- dplyr::select(cust_df,-id)
+cust_df_num <- dplyr::select(cust_df_num,-c(vehicle_type,outcome,outcome_number,education_old,income_old,income,education))
+
+#check the data
+str(cust_df_num)
+
+```
+now we can see that number of features are 14 here.
+We need to normalize the data by scale() function
+```{r  eval=FALSE}
+#scale data
+cust_df_num_scale <- scale(cust_df_num)
+```
+
+Also need to calculate distance matrix. here we use Euclidean method.
+```{r  eval=FALSE}
+#distance 
+cust_df_dis<- dist(cust_df_num,method = 'euclidean')
+cust_df_dis_scale<- dist(cust_df_num_scale,method = 'euclidean')
+```
+
+
+## 4.2- K-means
+In this part we use K-means clustering algorithm and for having the optimal number of K (clusters) here firstly we used elbow method to calculate Within sum of squares(WSS) and minimum one would be best response.There are two ways for finding the K:
+```{r  eval=FALSE}
+#solution 1 silhouette
+library(factoextra)
+figure8<- factoextra:: fviz_nbclust(cust_df_num_scale, kmeans, method="silhouette")+
+#  labs(subtitle = "Elbow method")
+
+#solution 2 WSS elbow method
+set.seed(345)
+wss <- sapply(1:10, function(k){kmeans(cust_df_num_scale, k, nstart=20)$tot.withinss})
+
+figure9<- plot(x= 1:10 ,y=wss, type="l", frame=FALSE, xlab="clusters-K", ylab="WSS per clusters")
+```
+
+* fitting K-means with two cluster
+```{r eval=FALSE}
+set.seed(720)
+KM_model <-kmeans(cust_df_num_scale, centers=2, nstart=20)
+KM_model
+KM_model$tot.withinss
+```
+with two clusters we can see that our customers are split to two clusters `4497` and `3652`. Lets see these customers in a plot,
+
+```{r eval=FALSE}
+KM_customer <- mutate(cust_df_num,kmeans=KM_model$cluster, outcome=cust_df$outcome_number)
+xtabs(~kmeans+outcome,KM_customer )
+```
+We can see that probability in claim in customers cluster 1 is \%12 and in cluster 2 is 55%.
+```{r  eval=FALSE}
+# plotting K-means result
+plot(x=KM_customer$credit_score, y=KM_customer$annual_mileage,
+    col = KM_customer$kmeans,
+    main = "K-Means Clustering Results with K=2",
+    xlab="credit_score",ylab="annual_mileage", pch = 20, cex = 1)
+
+figure10 <- ggplot(KM_customer,aes(x=credit_score,y=annual_mileage,
+                        color = factor(kmeans))) +
+  geom_point()+
+  ggtitle("K-Means Clustering Results with K =2")
+  
+```
+
+## 4.3- Hierarchical Clustering
+In this part we are using hierarchical clustering for our dataset, 
+```{r eval=FALSE}
+hcl_com_model <-hclust(cust_df_dis, method = "complete")
+hcl_ave_model <-hclust(cust_df_dis, method = "average")
+hcl_sin_model <-hclust(cust_df_dis, method = "single")
+hcl_cen_model <-hclust(cust_df_dis, method = "centroid")
+```
+
+We used 4 linkage to fit the cluster model and here we plot these 4 clusters:
+```{r eval=FALSE}
+figure11 <- plot(hcl_com_model, main = "Complete Linkage",
+xlab = "", sub = "", cex = .5, hang=-10)
+rect.hclust(hcl_com_model , k = 2, border = 2:6)
+abline(h = 3, col = 'red')
+
+figure12 <-plot(hcl_ave_model, main = "Average Linkage",
+xlab = "", sub = "", cex = .5, hang=-10)
+rect.hclust(hcl_ave_model , k = 2, border = 2:6)
+abline(h = 3, col = 'red')
+
+figure13 <-plot(hcl_sin_model, main = "Single Linkage",
+xlab = "", sub = "", cex = .5, hang=-10)
+rect.hclust(hcl_sin_model , k = 2, border = 2:6)
+abline(h = 3, col = 'red')
+
+figure14 <- plot(hcl_cen_model, main = "Centroid Linkage",
+xlab = "", sub = "", cex = .5, hang=-10)
+rect.hclust(hcl_cen_model , k = 2, border = 2:6)
+abline(h = 3, col = 'red')
+
+```
+we can see that it is hard to recognize data point in the last clusters so we use cutree() function to cut the dendogram based on number of clusters.
+```{r eval=FALSE}
+cut_hclc_model<-cutree(hcl_com_model,k=2)
+cut_hcla_model<-cutree(hcl_ave_model,k=2)
+cut_hcls_model<-cutree(hcl_sin_model,k=2)
+cut_hclcen_model<-cutree(hcl_cen_model,k=2)
+```
+
+```{r eval=FALSE}
+hcl_customers<- mutate(cust_df_num,Hcluster=cut_hclc_model, outcome=cust_df$outcome_number, kmeans=KM_model$cluster)
+xtabs(~Hcluster+outcome,hcl_customers)
+xtabs(~Hcluster+kmeans,hcl_customers)
+```
+```{r  eval=FALSE}
+figure15 <- ggplot(hcl_customers, aes(x=credit_score, y =annual_mileage, color = factor(Hcluster))) + geom_point()+ggtitle("hierarchical Clustering Results with K =2")
+figure15
+```
+* using scaled features
+```{r eval=FALSE}
+plot(
+  hclust(cust_df_dis_scale, method = "complete"),
+main = "Hierarchical Clustering with Scaled Features")
+cut_customer_scale <- cutree(hclust(cust_df_dis_scale, method = "complete"),k=2)
+```
+
+## 4.4- Gaussian Mixture Model
+model based clustering with 2 clusters:
+```{r  eval=FALSE}
+Mclust_model <- Mclust(cust_df_num_scale, 2)
+summary(Mclust_model)
+names(Mclust_model)
+map(Mclust_model$z)
+```
+```{r  eval=FALSE}
+Mclust_customers <- mutate(cust_df_num,Mcluster=Mclust_model$classification, outcome=cust_df$outcome)
+xtabs(~Mcluster+outcome,Mclust_customers)
+figure16<- ggplot(Mclust_customers, aes(x=credit_score, y =annual_mileage,
+                                         color = factor(Mcluster))) +
+  geom_point()+
+  ggtitle("Gaussian Mixture Clustering Results with K =2")
+figure16
+
+```
+
+```{r  eval=FALSE}
+#plot(Mclust_model,  what = c("BIC"))
+plot(Mclust_model,  what = c("classification"), main = "Mclust clustering with five components")
+
+```
+
+## 4.5- PCA
+### 4.5.1 Perform PCA
+```{r eval=FALSE}
+#perform PCA
+PCA_model <-prcomp(cust_df_num,center= TRUE, scale = TRUE)
+
+#we can use scaled dataset directly
+PCA_model2 <-prcomp(cust_df_num_scale,center= TRUE)
+
+#summary PCR model
+names(PCA_model)
+summary(PCA_model)
+
+```
+* since there are 14 features, we have 14 PCAs as well 
+
+```{r  eval=FALSE}
+#loading scores 
+PCA_model$rotation
+dim(PCA_model$x)
+```
+* The first PCA accounts for `30\%` variation of data and second accounts for `11\%'.
+```{r eval=FALSE}
+prop_var <- round(((PCA_model$sdev^2)/sum(PCA_model$sdev^2))*100,0)
+prop_var
+figure17 <- (plot(prop_var, main="PCA Percent Variance",
+                 xlab="Principal component",type="b", col="blue"))
+figure18 <- (plot(cumsum(prop_var),main="PCA Cumulative Percent Variance",
+     xlab="Principal component",type="b", col="blue"))
+```
+In rotation matrix we can see that score of 15 features for PCA1 is not equal and some of features such as `gender`, `race` and `postal_code` have not explained by PC1, on the other hand PC4 for these features has the most score, so lets draw some plots:
+
+
+```{r eval=FALSE}
+figure19<- biplot(PCA_model, scale=0)
+```
+
+* Using the two PCA1 and PCA2 to draw a plot
+```{r  eval=FALSE}
+Cols <- function(vec) {
+cols <- rainbow(length(unique(vec)))
+return(cols[as.numeric(as.factor(vec))]) 
+}
+plot(PCA_model$x[,1],PCA_model$x[,2],col = Cols(colnames(cust_df_num)))
+```
+
+* Using the two PCA1 and PCA4 to draw a plot
+```{r  eval=FALSE}
+plot(PCA_model$x[,1],PCA_model$x[,4],col = Cols(colnames(cust_df_num)))
+```
+
+* eigenvalues of dataset and diagonal of the covariance matrix of PCA result 
+```{r  eval=FALSE}
+eigen(cor(cust_df_num))$value
+diag(var(PCA_model$x[,]))
+```
+
+```{r eval=FALSE}
+PCA_model$rotation=-PCA_model$rotation
+PCA_model$x=-PCA_model$x
+biplot(PCA_model, scale=0)
+```
+
+### 4.5.2 Clustering with PCA
+```{r  eval=FALSE}
+KM_model_PCA <- kmeans(PCA_model$x[, 1:5],centers=2, nstart=5)
+hcl_model_PCA <- hclust(dist(PCA_model$x[, 1:5]))
+cut_hcl_PCA <-cutree(hcl_model_PCA, k=2)
+plot(hcl_model_PCA ,main = "Hier. Clust. on First Five Score Vectors") 
+
+hcl_customers<- mutate(hcl_customers,Hcluster_PCA=cut_hcl_PCA, Kmeans_PCA=KM_model_PCA$cluster)
+xtabs(~Hcluster_PCA+outcome,hcl_customers)
+xtabs(~Hcluster_PCA+Kmeans_PCA,hcl_customers)
+
+```
+
+```{r  eval=FALSE}
+figure20 <- ggplot(hcl_customers,aes(x=credit_score,y=annual_mileage,
+                        color = factor(Kmeans_PCA))) +
+  geom_point()+
+  ggtitle("K-Means Clustering After PCA")
+
+figure21 <- ggplot(hcl_customers,aes(x=credit_score,y=annual_mileage,
+                        color = factor(Hcluster_PCA))) +
+  geom_point()+
+  ggtitle("Hierarchical Clustering After PCA")
+
+```
+
+## 4.6- DBSCAN clustering 
+```{r  eval=FALSE}
+library(fpc) #computing density-based clustering
+set.seed(133)
+DBSCAN_model <- fpc::dbscan(cust_df_num, eps = .9, MinPts = 5)
+
+names(DBSCAN_model)
+DBSCAN_model$cluster
+```
+
+# Part5- Model Evaluation
+### 5.1- Confusion matrix
+```{r eval=FALSE}
+# KNN accuracy
+table(knn_model, label_test_claim)
+mean(knn_model == label_test_claim)
+
+#Logistic regression accuracy
+table(LR.predicted.data$predicted_outcome,label_test_claim)
+mean(LR.predicted.data$predicted_outcome == LR.predicted.data$outcome)
+
+#classification decision tree
+table(Tree_predict, label_test_claim)
+(table(Tree_predict, label_test_claim)[1,1] + table(Tree_predict, label_test_claim)[2,2])/sum(table(Tree_predict, label_test_claim))
+
+```
+that shows accuracy of Logistic regression is a litter more. The average accuracy is around 84\%  which shows that there is more opportunity to improve the model performance.
+
+# Part6- Subset Selection
+## 6.1- Best Subset selection 
+```{r}
+best_subset_model <- regsubsets(outcome~.-outcome -outcome_number-
+                                id -education -income,
+                                data=cust_df,
+                                nvmax=20)
+summary(best_subset_model)
+names(summary(best_subset_model))
+```
+it shows that driving_experience, vehicle_year and vehicle_ownership are the most significant features the same as result in tree model that we had in part 3.3.
+```{r}
+plot(summary(best_subset_model)$rss,
+     xlab="Number of features",
+     ylab="RSS",
+     type="l")
+```
+ Here we want to use adjusted $R^2$ for feature selection
+```{r}
+plot(summary(best_subset_model)$adjr2,
+     xlab="Number of features",
+     ylab=" adjusted R2",
+     type="l")
+which.max(summary(best_subset_model)$adjr2)
+summary(best_subset_model)$which[which.max(summary(best_subset_model)$adjr2),]
+```
+  Here we want to use adjusted $R^2$ for feature selection
+  
+```{r}
+plot(summary(best_subset_model)$bic,
+     xlab="Number of features",
+     ylab=" bic",
+     type="l")
+which.min(summary(best_subset_model)$bic)
+summary(best_subset_model)$which[which.min(summary(best_subset_model)$bic),]
+
+```
+  By BIC the 9 features have been selected for the model. 
+  
+## 6.2- Forward Stepwise Selection
+```{r}
+FSS_model <-regsubsets(outcome~.-outcome -outcome_number-
+                                id -education -income,
+                      data=cust_df,
+                      nvmax=20,
+                      method="forward")
+summary(FSS_model)
+```
+
+## 6.3- backward Stepwise Selection
+```{r}
+FSS_model <-regsubsets(outcome~.-outcome -outcome_number-
+                                id -education -income,
+                      data=cust_df,
+                      nvmax=20,
+                      method="backward")
+summary(FSS_model)
+```
+
+# Part7- Sparse models
+## 7.1- Ridge Regression
+
+
+

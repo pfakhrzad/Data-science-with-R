@@ -1,0 +1,174 @@
+---
+title: "Assignment4- Sparse models // Supplementry"
+author: "Paria Fakhrzad"
+date: "11/21/2021"
+output: 
+    pdf_document:
+      toc: true
+bibliography: Assignment4.bib
+fontsize: 11pt
+---
+
+# Part a- Data
+## 1.1- loading libraries
+```{r setup, set.seed(1) , warning=FALSE, message=FALSE}
+library(dplyr)
+library(Hmisc)
+library(magrittr)
+library(readr)
+library(ggplot2)
+library(ISLR2)
+library(class)
+library(ggpubr)
+library(GGally)
+library(PreProcess)
+library(caTools)
+library(caret)
+library(tree) # CART 
+library(MASS)
+library(mclust) # for Gaussian Mixtures
+library(car)
+library(boot)
+library(e1071)
+library(leaps)
+library(glmnet)
+library(pls)
+```
+
+## 1.2- loading dataset
+In this assignment we are using a dataset related to insurance company^[https://www.kaggle.com/racholsan/customer-data].
+There are 10000 samples in this dataset that are customers of this company and their 18 features in year 2020~\cite{data}. There are 10000 customer as sample in this data frame.
+```{r message=FALSE, warning=FALSE}
+cust_df_original <- readr:: read_csv("customer-data.csv")
+cust_df <- cust_df_original
+```
+
+## 1.3- data tidying
+
+ * Outliers and missing values 
+ Here we can see that 957 samples have null value in annual_mileage and 982 samples have null value in credit_score.Therefore in we omit these `NA` observations from our dataset.
+```{r warning=FALSE, message=FALSE, eval=FALSE}
+#finding null observation
+table(sapply(cust_df,function(x)all(is.na(x))))#Columns are totally empty
+table(lapply(cust_df,function(x){length(which(is.na(x)))})) #Columns with NA
+cust_df<- dplyr::filter(cust_df,!is.na(annual_mileage))
+cust_df<- dplyr::filter(cust_df,!is.na(credit_score))
+```
+
+For using Spars method we need have numerical features so we use model.matrix() for this mean:
+```{r}
+#change the label to factor
+cust_df_new <- mutate(cust_df, outcome = 
+                        factor(outcome, levels = c("FALSE", "TRUE"), 
+                        labels = c(0, 1)))
+cust_df_x<-model.matrix(outcome~.,cust_df)
+cust_df_x <- scale(cust_df_x)
+cust_df_x<-cust_df_x[,-2]
+cust_df_y <-cust_df$outcome
+cust_df_new <-as_tibble(cbind(cust_df_x,cust_df_y))
+cust_df_new <- dplyr::select(cust_df_new,-1)
+cust_df_y <-ifelse(cust_df_y=="TRUE",1,0)
+
+#Split data to tarin and test
+ ts_split <- createDataPartition(cust_df_new$cust_df_y, p = 0.5, list = FALSE)
+ train_data<- cust_df_new[ts_split,]
+ test_data<- cust_df_new[-ts_split,]
+ train_matrix <- as.matrix(train_data)
+ test_matrix<- as.matrix(test_data)
+ 
+ label_train <- dplyr::pull(train_data, cust_df_y)
+ label_test <- dplyr::pull(test_data, cust_df_y)
+```
+
+# Partb- feature selection Methods
+
+## 2.1- subset selection
+* Best Subset selection 
+```{r}
+best_subset_model <- regsubsets(cust_df_y~ .,
+                                data=cust_df_new,
+                                nvmax=20)
+#summary(best_subset_model)
+names(summary(best_subset_model))
+```
+
+It shows that driving_experience, vehicle_year and vehicle_ownership are the most significant features
+```{r}
+set.seed(10)
+plot(summary(best_subset_model)$adjr2,
+     xlab="Number of features",
+     ylab=" adjusted R2",
+     type="l")
+which.max(summary(best_subset_model)$adjr2)
+summary(best_subset_model)$which[which.max(summary(best_subset_model)$adjr2),]
+```
+
+## 2.2- Ridge Regression
+```{r eval=FALSE}
+#fit ridge regression with whole data
+grid <- 10^seq(10,-2,length=100)
+ridge_model <- glmnet(cust_df_x, cust_df_y, alpha = 0, lambda = grid)
+plot(ridge_model)
+
+#cross validation 
+set.seed(10)
+cv_out <- cv.glmnet(train_matrix[,-cust_df_y], label_train , alpha = 0,lambda = grid) 
+
+plot(cv_out)
+bestlam <- cv_out$lambda.min
+bestlam
+
+ridge_pred <- predict(ridge_model, s = bestlam, newx = test_matrix)
+mean((ridge_pred - label_test)^2)
+
+#Accuracy
+mean(abs(ridge_pred - label_test)<.5)
+
+#use whole dataset
+ridge_model2 <- glmnet(cust_df_x, cust_df_y, alpha = 0)
+predict(ridge_model2, type = "coefficients", s = bestlam)[1:26, ]
+```
+
+
+## 2.3-  The Lasso
+```{r eval=FALSE}
+#fit lasso model
+lasso_model <- glmnet(cust_df_x, cust_df_y, alpha = 1, lambda = grid)
+plot(lasso_model )
+
+#Cross validation
+set.seed(10)
+cv_lasso <- cv.glmnet(cust_df_x, cust_df_y, alpha = 1) 
+plot(cv_lasso)
+
+bestlam <- cv_lasso$lambda.min
+bestlam
+lasso_pred <- predict(lasso_model , s = bestlam, newx = test_matrix)
+mean((lasso_pred - label_test)^2)
+
+#Accuracy
+mean(abs(lasso_pred - label_test)<.5)
+predict(lasso_model, type = "coefficients", s = bestlam)[1:26, ]
+```
+
+## 2.4- PLR
+
+```{r eval=FALSE}
+set.seed(10)
+
+#fit PLS 
+pls_model <- plsr(cust_df_y ~ ., data = train_data, validation = "CV")
+summary(pls_model)
+
+```
+```{r eval=FALSE}
+validationplot(pls_model, val.type = "MSEP")
+```
+
+```{r eval=FALSE}
+pls_pred <- predict(pls_model,test_data , ncomp = 3)
+mean((pls_pred - label_test)^2)
+mean(abs((pls_pred - label_test)<0.5))
+
+```
+
