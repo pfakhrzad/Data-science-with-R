@@ -63,7 +63,7 @@ ggsave("figure1b.png",plot=figure1b, width=10, height=3)
 
 ## Part a
 in this part I load the data and create a heatmap from raw data with pheatmap()[@pheatmap]
-```{r eval=FALSE}
+```{r}
 data_gene <- readr::read_csv("https://gist.githubusercontent.com/krisrs1128/b8dc85b659186259715f8efe950ffce6/raw/77669ebdda4d6f8a029c2fdf506f4599277b50f4/hiiragi.csv")
 
 # finding the null data 
@@ -88,7 +88,7 @@ ggsave("figure2a.png",plot=pheatmap1,width=10, height=4)
 ## Part b
 in this part I use kmeans_k as number of clusters and also put denogram for both rows and columns. I see one category in samples names but I am not sure it works or not.
 
-```{r eval=FALSE}
+```{r}
 rownames(df2) <- data_gene2$gene
 pheatmap3<- pheatmap(df2,cluster_rows=TRUE, cluster_cols=TRUE, kmeans_k = 10,)
 ggsave("figure2b.png",plot=pheatmap3,width=10, height=4)
@@ -102,13 +102,13 @@ pheatmap3
  * reading data
 in this Assignment I used the data in this [Link](https://www.kaggle.com/shivkp/customer-behaviour?select=DataCoSupplyChainDataset.csv). this is a table with 180519 rows and 53 columns. 
 
-```{r eval=FALSE}
+```{r}
 SCM_data <- read_csv("DataCoSupplyChainDataset.csv")
 ```
 
 * Tidying the Supply Chain data
 note: In this table, one column has a NULL number. I found this based on below codes:
-```{r eval=FALSE}
+```{r}
 summary_SCM <-dplyr::select(SCM_data,c("Days for shipping (real)","Sales per customer","Sales per customer","Order Item Discount Rate","Type"))
 xtable::xtable(summary_SCM <- data.frame(summary(summary_SCM))) #table of summaryS
 sapply(SCM_data,function(x)all(is.na(x))) #Columns are totally empty
@@ -121,7 +121,7 @@ str(SCM_data)
 * spliting tables
 because we don't want to use all columns so some of them has been selected and the names of columns have changed based on standard valuable names in programming( removing the spaces between words)
 
-```{r eval=FALSE}
+```{r}
 #changing the name of columns
 names(SCM_data)[names(SCM_data) == "Delivery Status"] <- "delivery_status"
 names(SCM_data)[names(SCM_data) == "Shipping Mode"] <- "shipping_mode"
@@ -153,7 +153,7 @@ table_delay <-  dplyr::select(SCM_data,c("delivery_status","shipping_mode","ship
 
 ## Part c
  * graph number 1
-```{r eval=FALSE}
+```{r}
 sub_group <-dplyr::filter(table_delay,year==c(2015,2016,2017,2018))
 graph_bar <- ggplot(sub_group)+
   geom_bar(aes(order_date,fill = factor(sub_group$delivery_status)))
@@ -163,8 +163,7 @@ ggsave("figure3a.png",plot=graph_bar, width=10, height=4)
 ```
 
 
-* graph number2
-```{r eval=FALSE}
+```{r}
 table_price <- dplyr::select(SCM_data,c("Late_delivery_risk","year","shipping_date","shipping_days","discount","discount_rate","price","order_quantity","order_region","shipping_mode",))
 
 graph_point <- ggplot(table_price)+
@@ -176,7 +175,7 @@ graph_point <- ggplot(table_price)+
  ggsave("figure3b.png",plot=graph_point, width=10, height=4)
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 graph_his <- ggplot(data = SCM_data) +
   geom_hex(mapping =aes(x=Profit, y=discount),binwidth=20)
 ggsave("figure4c.png",plot=graph_his, width=10, height=4)
@@ -185,7 +184,7 @@ ggsave("figure4c.png",plot=graph_his, width=10, height=4)
 
 * Graph number3
  comparing shipment class and Delivery status. I split new table that contains two variables and add new column for frequency.
-```{r eval=FALSE}
+```{r}
 matrix_data <- select(table_delay,shipping_mode,delivery_status)
 counts <- ddply(matrix_data, .(matrix_data$shipping_mode, matrix_data$delivery_status), nrow)
 names(counts)[names(counts) == "matrix_data$shipping_mode"] <- "shipping_class"
@@ -201,7 +200,7 @@ ggsave("figure3c.png",plot=graph_bar, width=10, height=4)
 ## Part d- Shiny App
 In this Part I used the customize dataset in my github repository in this [link](https://raw.githubusercontent.com/pfakhrzad/Data_visualization/main/SCM_shiny.csv)
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 
 write.csv(sub_group,'SCM_shiny.csv')
 data_for_shiny <- read_csv("https://raw.githubusercontent.com/pfakhrzad/Data_visualization/main/SCM_shiny.csv")
@@ -213,7 +212,7 @@ library(shinyWidgets)
 * making the shiny app 
 the link of shiny app is[https://vmbe7g-paria-fakhrzad.shinyapps.io/Smart_Supply_chain/](https://vmbe7g-paria-fakhrzad.shinyapps.io/Smart_Supply_chain/)
 
-```{r eval=FALSE}
+```{r}
 # Define UI part 
 ui <- fluidPage(
   setBackgroundColor("gray"),
