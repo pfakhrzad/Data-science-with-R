@@ -32,7 +32,7 @@ library(MASS)
 The source of data^[https://www.kaggle.com/racholsan/customer-data].
 we will use a Car insurance claim dataset in 2021 that has collected based on customers of that insurance company ~\cite{data}. There are 10000 customer as sample in this data frame. Also 17 features have been collected based on the customer's attributes. There is one column that shows this customer had accident claim last year or not. this is logical column. The data shows that 23percent of customers claimed the accident insurance last year.
 
-```{r eval=FALSE, message=FALSE, warning=FALSE}
+```{r}
 customer_claim_original <- readr:: read_csv("customer-data.csv")
 customer_claim <- customer_claim_original
 customer_claim <- dplyr::select(customer_claim,-id)
@@ -44,7 +44,7 @@ The rows with NA values in SpeedingViolation have been removed. Also the age and
 * married True=1 , false=0 
 * children True=1 , false=0
 
-```{r warning=FALSE, message=FALSE, eval=FALSE}
+```{r}
 
 #finding null observation
 table(sapply(customer_claim,function(x)all(is.na(x))))#Columns are totally empty
@@ -145,7 +145,7 @@ customer_claim <- mutate(customer_claim, outcome =
   * vehicle_type $x_{10}$,
   * speeding_violations $x_{11}$,
   * past_accidents $x_{12}$,
-```{r , message=FALSE, warning=FALSE,  eval=FALSE}
+```{r}
 #shows the feature names
 customer_claim <- as_tibble(customer_claim)
 names(customer_claim)
@@ -163,7 +163,7 @@ In this section we tried to explore the association by visualization tools and s
 ### 2.2.1- Using visualization methods
 we use ggpairs() \cite{@Emersonetc2012} to see correlation between numeric features in figure1. the significant point is that Age and driving experience are collinear.  In figure4 It appears that older  customers who own the vehicle tended to not claim the insurance for accident(outcome in figure legend) than those who did not. Also in figure5 it seems there are relationship between credit score and number of claims in last year.
 * using ggpairs() for founding the correlation of numeric features:
-```{r eval=FALSE}
+```{r}
 customer_corr_matrix <- dplyr::select(customer_claim,c("age","driving_experience","annual_mileage",
                                                        "speeding_violations","past_accidents","credit_score","outcome"))
 
@@ -177,7 +177,7 @@ figure
 ```
 
 * using box-plot and scatter-plot for figuring out the relationships between some categorical variables with "response" that here is ourcome( 1:TRUE, 0:FALSE)
-```{r  eval=FALSE}
+```{r}
 
 # speeding_violations and past accidents
 figure2 <-ggscatter(customer_claim,x ='speeding_violations',y ='past_accidents', 
@@ -220,12 +220,12 @@ ggsave("figure5.png",figure5,width = 3, height = 2)
 ### 2.2.2- Using statistical method
 We also have used cor() function to calculated the correlation between features.
 
-```{r, include=FALSE,  eval=FALSE}
+```{r}
 cor(customer_claim$annual_mileage, customer_claim$speeding_violations, method = "pearson", use = "complete.obs")
 
 ```
 we used xtabs() to verify that all levels of factor variables had both claimed insurance.
-```{r  eval=FALSE}
+```{r}
 # calculatin the number of response per each categorical variable
 xtabs(~outcome+age,customer_claim)
 xtabs(~outcome+gender,customer_claim)
@@ -246,7 +246,7 @@ xtabs(~outcome+children,customer_claim)
 
 * train_data: split randomly by sample (75%)
 * test_data: split randomly by sample (25%)
-```{r , eval=FALSE, warning=FALSE, message=FALSE}
+```{r}
 #defining sample size and randomly split data solution 1
 training_size = floor(0.75*nrow(customer_claim))
 train_data_Solution1 <- sample(seq_len(nrow(customer_claim)),size = training_size)
@@ -282,7 +282,7 @@ predictor_test <- dplyr::select(test_data,age,driving_experience,               
  we fit the model with training data then we predict the response with test data.
  For this classification model we need K, that one way is using $square root of number pf samples$ based on Thumb rule in this link^[https://discuss.analyticsvidhya.com/t/how-to-choose-the-value-of-k-in-knn-algorithm/2606/13]. Also after fitting KNN model We can test our accuracy for K range from 1 till 101.
  * Repeat the K in KNN model to choose the best K
-```{r  eval=FALSE}
+```{r}
 accuracy_table <- data.frame(matrix(ncol = 2, nrow= 0))
 col_name <- c('accuracy', 'k')
 colnames(accuracy_table) <- col_name
@@ -298,7 +298,7 @@ xtable::xtable(head(accuracy_table,20))
 ```
 
 ### 3.2.1 fitting KNN model
-```{r eval=FALSE}
+```{r}
 #fit
 knn_model <- knn(predictor_train, predictor_test, train_data$outcome,k = 9)
 #predict
@@ -311,7 +311,7 @@ summary(knn_model)
 ## 3.2- Logistic regression 
 We fit model logistic regression based on the train and test data and run it 10 times. Also we consider that labels with fitted probability more than 50\% are correct and we plot the accuracy probability with samples as figure6. It clearly shows that the logistic regression model works well based on this dataset. Also based on figure8 it shows there is not much outlier.
 
-```{r  eval=FALSE}
+```{r}
 #fit
 LR_model<- glm(outcome~driving_experience+
                 vehicle_year,
@@ -337,7 +337,7 @@ ggsave ("figure8.png",plot(LR_model))
 
 
 * here we plot the probability per response for Logistic regression model
-```{r  eval=FALSE}
+```{r}
 # Probability per response 
 figure7 <- ggplot(LR.predicted.data, aes(x= rank, y=probability, col=outcome))+
            geom_point()+scale_fill_manual(values = c("red", "green"))
@@ -378,7 +378,7 @@ text(Tree_model, pretty = 0)
 ## 3.4- Model Evaluation
 
 ### 3.4.1- Confusion matrix
-```{r eval=FALSE}
+```{r}
 # KNN accuracy
 table(knn_model, label_test_claim)
 mean(knn_model == label_test_claim)
@@ -396,7 +396,7 @@ that shows accuracy of Logistic regression is a litter more. The total accuracy 
 
 ## 3.5- Cross Validation: validation set
 repeat KNN and logistic regression models for 10 times. here we used for() function for iteration.
-```{r  eval=FALSE}
+```{r}
 KNN_running_table <- data.frame(matrix(ncol = 2, nrow= 0))
 LR_running_table <- data.frame(matrix(ncol = 2, nrow= 0))
 colnames(KNN_running_table) <- c('Accuracy', 'Run')
