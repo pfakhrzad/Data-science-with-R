@@ -1,22 +1,17 @@
-# Data_visualization
-## Here is a sample of Assignment for data science course that use R landuage. 
-## In this RMD I used these package of R:
-* library(dplyr)     # using for adding columns or setting filter
-* library(readr)     # reading data
-* library(tidyverse) 
-* library(tidyr)    # using gather for tidying
-* library(ggplot2)  # plots
-* library(pheatmap) # plot heatmap
-* library(readxl)   # save file as CSV
-* library(phyloseq)
-* library(lubridate)# converting the string to dates and extract year and month
-* library(viridis)  # put color in plots
-* library(shiny)    # building shiny app
-* library(xtable)   # making table for LATEX
-* library(plyr)     # use for calculating frequency
-* library(shinyWidgets)
+Here, there are four assignments of data science course
 
+# Assignmnet 1: Data visualization
+In this assignment we uses R packages for visualization.
 Also I used three difference Dataset that I explained in RMA file. This was a sample of how to load data set,tidy it and visualize the important trends or points.
 ## Shiny app
 I used shiny packege for making a shiny app for one of my plots. this is the link of this App:
 * https://vmbe7g-paria-fakhrzad.shinyapps.io/Smart_Supply_chain/
+
+# Assignment 2: Classification
+In this assignment we used `logistic regression` and `K-nearest neighbour` methods for classification. We will use a Car insurance claim [dataset](https://www.kaggle.com/racholsan/customer-data) in 2021 that has collected based on customers of that insurance company.
+
+# Assignment 3: Clustering
+In assignment3 we used the same dataset of assignment2, the methods here are `k-means clustering`, `hierarchical clustering` and `Gaussian mixture model`.
+
+# Assignment 4: Spars models
+In assignment4 we used `Ridge Regression`, `LASSO` and  `Partial Least Square PLS` for a dataset with huge features. 
